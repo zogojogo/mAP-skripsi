@@ -666,11 +666,15 @@ with open(output_files_path + "/output.txt", 'w') as output_file:
         rec = tp[:]
         for idx, val in enumerate(tp):
             rec[idx] = float(tp[idx]) / gt_counter_per_class[class_name]
-        #print(rec)
+        sum_recall = []
+        recall = np.mean(rec)
+        sum_recall.append(recall)
         prec = tp[:]
+        sum_precision = []
         for idx, val in enumerate(tp):
             prec[idx] = float(tp[idx]) / (fp[idx] + tp[idx])
-        #print(prec)
+        precision = np.mean(prec)
+        sum_precision.append(precision)
 
         ap, mrec, mprec = voc_ap(rec[:], prec[:])
         sum_AP += ap
@@ -725,9 +729,15 @@ with open(output_files_path + "/output.txt", 'w') as output_file:
 
     output_file.write("\n# mAP of all classes\n")
     mAP = sum_AP / n_classes
+    mRecall = np.mean(sum_recall)
+    mPrecision = np.mean(sum_precision)
+    f1_score = 2*mPrecision*mRecall/(mPrecision+mRecall)
     text = "mAP = {0:.2f}%".format(mAP*100)
     output_file.write(text + "\n")
     print(text)
+    print("mRecall = {0:.2f}%".format(mRecall*100))
+    print("mPrecision = {0:.2f}%".format(mPrecision*100))
+    print("F1 Score = {0:.2f}%".format(f1_score*100))
 
 """
  Draw false negatives
