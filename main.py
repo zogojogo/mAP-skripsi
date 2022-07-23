@@ -493,10 +493,20 @@ for class_index, class_name in enumerate(gt_classes):
     with open(TEMP_FILES_PATH + "/" + class_name + "_dr.json", 'w') as outfile:
         json.dump(bounding_boxes, outfile)
 
+def smooth(y, f=0.05):
+    # Box filter of fraction f
+    nf = round(len(y) * f * 2) // 2 + 1  # number of filter elements (must be odd)
+    p = np.ones(nf // 2)  # ones padding
+    yp = np.concatenate((p * y[0], y, p * y[-1]), 0)  # y padded
+    return np.convolve(yp, np.ones(nf) / nf, mode='valid')  # y-smoothed
+
 """
  Calculate the AP for each class
 """
 sum_AP = 0.0
+sum_precision = []
+sum_recall = []
+sum_f1_score = []
 ap_dictionary = {}
 lamr_dictionary = {}
 # open file to store the output
@@ -662,19 +672,23 @@ with open(output_files_path + "/output.txt", 'w') as output_file:
         for idx, val in enumerate(tp):
             tp[idx] += cumsum
             cumsum += val
-        #print(tp)
+        
         rec = tp[:]
         for idx, val in enumerate(tp):
             rec[idx] = float(tp[idx]) / gt_counter_per_class[class_name]
-        sum_recall = []
-        recall = np.mean(rec)
-        sum_recall.append(recall)
+        
         prec = tp[:]
-        sum_precision = []
         for idx, val in enumerate(tp):
             prec[idx] = float(tp[idx]) / (fp[idx] + tp[idx])
-        precision = np.mean(prec)
-        sum_precision.append(precision)
+        
+        f1 = 2.0 * np.array(prec) * np.array(rec) / (np.array(prec) + np.array(rec) + 1e-6)
+
+        i = np.argmax(f1)
+        p, r, f1_score = prec[i], rec[i], f1[i]
+        
+        sum_precision.append(p)
+        sum_recall.append(r)
+        sum_f1_score.append(f1_score)
 
         ap, mrec, mprec = voc_ap(rec[:], prec[:])
         sum_AP += ap
@@ -731,7 +745,7 @@ with open(output_files_path + "/output.txt", 'w') as output_file:
     mAP = sum_AP / n_classes
     mRecall = np.mean(sum_recall)
     mPrecision = np.mean(sum_precision)
-    f1_score = 2*mPrecision*mRecall/(mPrecision+mRecall)
+    mf1_score = 2.0 * mPrecision * mRecall / (mPrecision + mRecall)
     text = "mAP = {0:.2f}%".format(mAP*100)
     output_file.write(text + "\n")
     print(text)
